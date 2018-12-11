@@ -1,0 +1,4 @@
+* text eol=lf
+*_crlf.json text eol=crlf
+*.png binary
+*.doctree binary

@@ -1,0 +1,1180 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Input Pipeline &#8212; nnetmaker 0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Documentation for nnetmaker" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">nnetmaker</a></h1>
+
+
+
+<p class="blurb">A Python package for assisting neural network production with TensorFlow.</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Input Pipeline</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#dataset-specification">Dataset Specification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#types-of-batch-loaders">Types of Batch Loaders</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#batch-loader-arguments">Batch Loader Arguments</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Documentation for nnetmaker</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="input-pipeline">
+<h1>Input Pipeline<a class="headerlink" href="#input-pipeline" title="Permalink to this headline">¶</a></h1>
+<p>The input pipeline assumes datasets exist somewhere they can be accessed by TensorFlow
+as one or more <code class="docutils literal notranslate"><span class="pre">TFRecord</span></code> data files, and that all data files in a dataset
+have the same feature names and structure. A manifest file for each dataset describes
+these features and structure and must be configured prior to loading the dataset.</p>
+<p>Data files are read, parsed, preprocessed, and batched according to the
+configuration specified by the user. Features are requested from the
+dataset and mapped to model inputs or outputs for training and evaluation.</p>
+<p>Batch loaders construct a TensorFlow <code class="docutils literal notranslate"><span class="pre">Estimator</span></code> model’s <code class="docutils literal notranslate"><span class="pre">input_fn</span></code>. They
+load requested features from records in the dataset, preprocess them, and
+construct minibatches to feed into the model.</p>
+<div class="section" id="dataset-specification">
+<h2>Dataset Specification<a class="headerlink" href="#dataset-specification" title="Permalink to this headline">¶</a></h2>
+<p>Datasets are comprised of <code class="docutils literal notranslate"><span class="pre">TFRecord</span></code> data files together with a manifest file containing
+global information about the contents of those data files. All data files in a dataset
+must be consistent with what is described in the manifest.</p>
+<p>The manifest file contains a single JSON object with the following keys:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="29%" />
+<col width="18%" />
+<col width="15%" />
+<col width="38%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">compression</span></code></td>
+<td>string or
+<code class="docutils literal notranslate"><span class="pre">null</span></code></td>
+<td>yes</td>
+<td>The type of compression used
+for the records. May be
+<code class="docutils literal notranslate"><span class="pre">&quot;zlib&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;gzip&quot;</span></code>, or
+<code class="docutils literal notranslate"><span class="pre">null</span></code> for no compression.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">allow_var_len</span></code></td>
+<td>boolean</td>
+<td>yes</td>
+<td>If <code class="docutils literal notranslate"><span class="pre">false</span></code>, all records are
+serialized <code class="docutils literal notranslate"><span class="pre">Example</span></code>
+protobufs with fixed-length
+<code class="docutils literal notranslate"><span class="pre">Feature</span></code> protos. If
+<code class="docutils literal notranslate"><span class="pre">true</span></code>, all records are
+<code class="docutils literal notranslate"><span class="pre">SequenceExample</span></code> protobufs
+and may contain variable-length
+<code class="docutils literal notranslate"><span class="pre">FeatureList</span></code> protos.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">features</span></code></td>
+<td>list</td>
+<td>yes</td>
+<td>A JSON array of objects
+specifying all features
+available for loading from the
+dataset. Only features requested
+by the running pipeline
+configuration will be loaded
+for a model.</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="dataset-features">
+<h3>Dataset Features<a class="headerlink" href="#dataset-features" title="Permalink to this headline">¶</a></h3>
+<p>All feature specifiers are JSON objects with the following keys:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="24%" />
+<col width="17%" />
+<col width="21%" />
+<col width="38%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">name</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>The name of the feature or
+feature list in the protobuf.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">dtype</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>The datatype to give the tensor
+once deserialized, cast
+if different from what is
+read from the data file.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">shape</span></code></td>
+<td>list</td>
+<td>yes</td>
+<td>The shape to give the tensor
+once deserialized. If it is a
+variable length sequence, this
+is the shape of each sequence
+element instead.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">var_len</span></code></td>
+<td>boolean</td>
+<td>if
+<code class="docutils literal notranslate"><span class="pre">allow_var_len</span></code>
+is <code class="docutils literal notranslate"><span class="pre">true</span></code></td>
+<td>Must be <code class="docutils literal notranslate"><span class="pre">false</span></code> if
+<code class="docutils literal notranslate"><span class="pre">allow_var_len</span></code> is <code class="docutils literal notranslate"><span class="pre">false</span></code>.
+Otherwise, specifies that the
+feature is a fixed-length
+context feature if <code class="docutils literal notranslate"><span class="pre">false</span></code>, or
+a variable-length feature list
+if <code class="docutils literal notranslate"><span class="pre">true</span></code>.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">deserialize_type</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>Type of deserialization used to
+parse the serialized protobuf
+into a tensor, as defined below.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">deserialize_args</span></code></td>
+<td>dictionary</td>
+<td>no</td>
+<td>Arguments JSON object for the
+specific type of deserialization.
+Defaults to empty object, but
+types may require certain
+arguments to be present.</td>
+</tr>
+</tbody>
+</table>
+<p>The types of deserialization available are as follows:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">int</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body">The feature is stored in the data files as a TensorFlow int64 list.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">float</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body">The feature is stored in the data files as a TensorFlow float list.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">string</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body">The feature is stored in the data files as a TensorFlow bytes list.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body">None</td>
+</tr>
+</tbody>
+</table>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">raw</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body">The feature is stored in the data files as one or more tensors encoded
+as a raw bytes string in a TensorFlow bytes list.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<table border="1" class="docutils">
+<colgroup>
+<col width="18%" />
+<col width="16%" />
+<col width="15%" />
+<col width="51%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">endian</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>Specifies the endianness of the raw
+bytes. Must be <code class="docutils literal notranslate"><span class="pre">&quot;little&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;big&quot;</span></code>.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">len</span></code></td>
+<td>integer</td>
+<td>no</td>
+<td>The number of raw byte strings in each
+record. If greater than <code class="docutils literal notranslate"><span class="pre">1</span></code>, tensors
+are concatenated along a new first axis
+(before batching). Ignored if <code class="docutils literal notranslate"><span class="pre">var_len</span></code>
+is <code class="docutils literal notranslate"><span class="pre">true</span></code>. Defaults to <code class="docutils literal notranslate"><span class="pre">1</span></code>.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section" id="types-of-batch-loaders">
+<h2>Types of Batch Loaders<a class="headerlink" href="#types-of-batch-loaders" title="Permalink to this headline">¶</a></h2>
+<p>Different batch loader types are defined for different use cases. Each type
+reads files containing <code class="docutils literal notranslate"><span class="pre">TFRecord</span></code> protobufs from either a specified local
+directory or from a predefined list of files, then optionally shuffles the
+contents and outputs minibatches that the computation graph consumes.</p>
+<p>The types of batch loaders are:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">independent</span></code> (<a class="reference internal" href="#independent-loader-ref"><span class="std std-ref">args</span></a>)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body">Each data file represents a collection of examples that are independent from
+all other data files, and each <code class="docutils literal notranslate"><span class="pre">TFRecord</span></code> inside them represents a
+single example independent from all other examples.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">Use Case Example:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body">Each data file is a set of random images, each
+<code class="docutils literal notranslate"><span class="pre">TFRecord</span></code> is a single image, and the task is to label each image.</td>
+</tr>
+</tbody>
+</table>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">continuous_sequence</span></code> (<a class="reference internal" href="#continuous-loader-ref"><span class="std std-ref">args</span></a>)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body">Each data file represents a contiguous sequence of data, but the
+data inside each file is independent from the data inside other files.
+Each <code class="docutils literal notranslate"><span class="pre">TFRecord</span></code> represents a non-overlapping chunk of the full
+sequence, such that the concatenation of all records produces a
+single long sequence with no logical subsequence boundaries.
+Batch examples are selected by choosing random-length sliding windows
+from the concatenated full sequence. All selected features must
+have the same length along the first dimension.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">Use Case Example:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body">Each data file is a song, each <code class="docutils literal notranslate"><span class="pre">TFRecord</span></code> is a
+10 second segment of audio samples, and the task is to predict
+the next sample from the previous 3 seconds.</td>
+</tr>
+</tbody>
+</table>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">discrete_sequence</span></code> (<a class="reference internal" href="#discrete-loader-ref"><span class="std std-ref">args</span></a>)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body">Each data file again represents a contiguous sequence of data and
+again the data inside each file is independent from the data inside
+other files, but here each full sequence is separable into logical
+subsequences. Each <code class="docutils literal notranslate"><span class="pre">TFRecord</span></code> represents a non-overlapping subsequence,
+such that the concatenation of all records produces a single long
+sequence with logical subsequence boundaries at the beginning and end
+of each record. Batch examples are selected by choosing windows
+containing a random number of subsequences from the concatenated full
+sequence, aligned at record (subsequence) boundaries.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name" colspan="2">Use Case Example:</th></tr>
+<tr class="field-odd field"><td>&#160;</td><td class="field-body">Each data file is a text document, each <code class="docutils literal notranslate"><span class="pre">TFRecord</span></code>
+is a single sentence, and the task is to predict the next word using
+an LSTM model that resets the hidden and cell states every 3-5
+sentences.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="batch-loader-arguments">
+<h2>Batch Loader Arguments<a class="headerlink" href="#batch-loader-arguments" title="Permalink to this headline">¶</a></h2>
+<p>All batch loaders use the following configuration arguments:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="40%" />
+<col width="16%" />
+<col width="13%" />
+<col width="30%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">dataset</span></code></td>
+<td>dictionary</td>
+<td>yes</td>
+<td>Specfies the dataset to
+be loaded. See
+<a class="reference internal" href="#dataset-ref"><span class="std std-ref">dataset</span></a> below.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">target_batch_size</span></code></td>
+<td>integer</td>
+<td>yes</td>
+<td>Target size of each batch.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">drop_remainder</span></code></td>
+<td>boolean</td>
+<td>yes</td>
+<td>If <code class="docutils literal notranslate"><span class="pre">true</span></code>, every batch
+is exactly the same size
+and unaligned remaining
+examples are dropped. If
+<code class="docutils literal notranslate"><span class="pre">false</span></code>, the final
+batch may be smaller than
+others. Only considered
+if <code class="docutils literal notranslate"><span class="pre">epochs</span></code> is not
+<code class="docutils literal notranslate"><span class="pre">null</span></code>.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">epochs</span></code></td>
+<td>integer or
+<code class="docutils literal notranslate"><span class="pre">null</span></code></td>
+<td>yes</td>
+<td>Number of passes through
+the dataset. Setting to
+<code class="docutils literal notranslate"><span class="pre">null</span></code> means infinite
+repetitions.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">num_parallel_reads</span></code></td>
+<td>integer</td>
+<td>no</td>
+<td>Number of parallel threads
+for reading data. Defaults
+to <code class="docutils literal notranslate"><span class="pre">1</span></code>.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">num_parallel_parses</span></code></td>
+<td>integer</td>
+<td>no</td>
+<td>Number of parallel threads
+for parsing data after
+reading. Defaults to <code class="docutils literal notranslate"><span class="pre">1</span></code>.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">num_read_buffer_bytes</span></code></td>
+<td>integer</td>
+<td>yes</td>
+<td>Number of bytes in the read
+buffer. Setting to <code class="docutils literal notranslate"><span class="pre">0</span></code>
+means no read buffering.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">num_prefetch</span></code></td>
+<td>integer</td>
+<td>yes</td>
+<td>Maximum number of batches to
+prefetch at the end of the
+input pipeline.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">shuffle</span></code></td>
+<td>boolean</td>
+<td>no</td>
+<td>Whether to shuffle data
+records. Defaults to
+<code class="docutils literal notranslate"><span class="pre">false</span></code>.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">num_shuffle_buffer_elements</span></code></td>
+<td>integer</td>
+<td>if
+<code class="docutils literal notranslate"><span class="pre">shuffle</span></code>
+is <code class="docutils literal notranslate"><span class="pre">true</span></code></td>
+<td>Number of data records to
+buffer for shuffling.
+Ignored if shuffling
+disabled.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">num_filenames_shuffle_buffer</span></code></td>
+<td>integer</td>
+<td>if
+<code class="docutils literal notranslate"><span class="pre">shuffle</span></code>
+is <code class="docutils literal notranslate"><span class="pre">true</span></code></td>
+<td>Number of filenames to
+buffer for shuffling
+before loading records.
+Ignored if shuffling
+disabled.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">num_mix_files</span></code></td>
+<td>integer</td>
+<td>if
+<code class="docutils literal notranslate"><span class="pre">shuffle</span></code>
+is <code class="docutils literal notranslate"><span class="pre">true</span></code></td>
+<td>Number of files loaded
+together to shuffle
+records among. Ignored if
+shuffling disabled.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">sloppy_interleave</span></code></td>
+<td>boolean</td>
+<td>no</td>
+<td>Whether to enable
+nondeterministic loading
+for potentially faster
+batches. Defaults to
+<code class="docutils literal notranslate"><span class="pre">false</span></code>.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">num_interleave_out_buffer_elements</span></code></td>
+<td>boolean</td>
+<td>no</td>
+<td>Number of output elements
+to buffer when
+interleaving file loading.
+Defaults to <code class="docutils literal notranslate"><span class="pre">1</span></code>.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">num_interleave_in_buffer_elements</span></code></td>
+<td>boolean</td>
+<td>no</td>
+<td>Number of input elements to
+prefetch when interleaving
+file loading. Defaults to
+<code class="docutils literal notranslate"><span class="pre">1</span></code>.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">primary_features</span></code></td>
+<td>list</td>
+<td>yes</td>
+<td>List of named features
+read from dataset.
+See <a class="reference internal" href="#primaries-ref"><span class="std std-ref">primary_features</span></a>
+below.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">secondary_features</span></code></td>
+<td>list</td>
+<td>no</td>
+<td>List of named features
+constructed after primaries.
+See <a class="reference internal" href="#secondaries-ref"><span class="std std-ref">secondary_features</span></a>.
+below. Defaults to empty
+list.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">processing_steps</span></code></td>
+<td>list</td>
+<td>no</td>
+<td>List of processing steps to
+perform on primary and
+secondary features. See
+<a class="reference internal" href="#processors-ref"><span class="std std-ref">processing_steps</span></a> below.
+Defaults to empty list.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">padding</span></code></td>
+<td>list or
+boolean</td>
+<td>no</td>
+<td>Tensor padding
+specifications. See
+<a class="reference internal" href="#paddings-ref"><span class="std std-ref">padding</span></a> below.
+Defaults to <code class="docutils literal notranslate"><span class="pre">false</span></code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="section" id="arguments-details">
+<h3>Arguments Details<a class="headerlink" href="#arguments-details" title="Permalink to this headline">¶</a></h3>
+<div class="section" id="dataset">
+<span id="dataset-ref"></span><h4><code class="docutils literal notranslate"><span class="pre">dataset</span></code><a class="headerlink" href="#dataset" title="Permalink to this headline">¶</a></h4>
+<p>The value of the <code class="docutils literal notranslate"><span class="pre">dataset</span></code> argument must be a single JSON object with the following keys:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="22%" />
+<col width="16%" />
+<col width="15%" />
+<col width="47%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">type</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>The type of dataset specifier, as
+defined below.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">args</span></code></td>
+<td>dictionary</td>
+<td>yes</td>
+<td>Arguments object for the specified
+<code class="docutils literal notranslate"><span class="pre">type</span></code>.</td>
+</tr>
+</tbody>
+</table>
+<p>The type may be either of the following:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">dir</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body">The dataset is loaded recursively from a local directory.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<table border="1" class="docutils">
+<colgroup>
+<col width="19%" />
+<col width="17%" />
+<col width="16%" />
+<col width="48%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">data_dir</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>Path to a locally-available data
+directory. The directory must contain
+a dataset manifest file named
+<code class="docutils literal notranslate"><span class="pre">__manifest__.json</span></code> in its top
+level, and at least one file with
+a <code class="docutils literal notranslate"><span class="pre">.tfrecords</span></code> extension storing
+the <code class="docutils literal notranslate"><span class="pre">TFRecord</span></code> protobufs. The
+directory is read recursively and
+all <code class="docutils literal notranslate"><span class="pre">.tfrecords</span></code> files are assumed
+to be data files.</td>
+</tr>
+</tbody>
+</table>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">list</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body">The dataset is loaded from an explicit list of files specified by the user.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<table border="1" class="docutils">
+<colgroup>
+<col width="22%" />
+<col width="16%" />
+<col width="15%" />
+<col width="47%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">manifest_file</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>Path to a locally-available dataset
+manifest used for all data files.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">list_file</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>Path to a locally-available text file
+listing an absolute path to each data
+file, one per line. Paths in the text
+file may be local, cloud locations,
+URLs, or any file path that can be
+loaded by TensorFlow.</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="primary-features">
+<span id="primaries-ref"></span><h4><code class="docutils literal notranslate"><span class="pre">primary_features</span></code><a class="headerlink" href="#primary-features" title="Permalink to this headline">¶</a></h4>
+<p>The value of the <code class="docutils literal notranslate"><span class="pre">primary_features</span></code> argument must be a list of JSON objects
+containing the following keys:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="22%" />
+<col width="16%" />
+<col width="15%" />
+<col width="47%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">from_name</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>Name of a feature tensor in the
+dataset as specified in its manifest.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">to_name</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>Name of the feature tensor once loaded
+into the input pipeline. Must be one
+of the model’s input or output tensors
+defined in the model configuration.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Every model input must be satisfied by a primary or secondary feature, or an
+error will be raised.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Every <code class="docutils literal notranslate"><span class="pre">to_name</span></code> must be unique or an error will be raised.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Any <code class="docutils literal notranslate"><span class="pre">to_name</span></code> that is constructed and not used by the model will raise an error.</p>
+</div>
+</div>
+<div class="section" id="secondary-features">
+<span id="secondaries-ref"></span><h4><code class="docutils literal notranslate"><span class="pre">secondary_features</span></code><a class="headerlink" href="#secondary-features" title="Permalink to this headline">¶</a></h4>
+<p>Secondary features are constructed after all primary features are loaded, and may
+or may not reference primary features by their <code class="docutils literal notranslate"><span class="pre">to_name</span></code>. The value of the
+<code class="docutils literal notranslate"><span class="pre">secondary_features</span></code> argument must be a list of JSON objects containing the
+following keys:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="22%" />
+<col width="16%" />
+<col width="15%" />
+<col width="47%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">to_name</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>Name of the feature tensor in the
+input pipeline. Must be one of the
+model’s input or output tensors
+defined in the model configuration.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">type</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>The type of secondary feature, as
+defined below.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">args</span></code></td>
+<td>dictionary</td>
+<td>no</td>
+<td>Arguments object for the specified
+<code class="docutils literal notranslate"><span class="pre">type</span></code>. Defaults to an empty object,
+but types may require certain
+arguments to be present.</td>
+</tr>
+</tbody>
+</table>
+<p>Secondary features may be any of the following types:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">const</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body">Constructs a tensor with all entries a constant value.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<table border="1" class="docutils">
+<colgroup>
+<col width="19%" />
+<col width="17%" />
+<col width="16%" />
+<col width="48%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">shape</span></code></td>
+<td>list or
+string</td>
+<td>yes</td>
+<td>Either a shape specifier as a JSON
+array of integers, or the name of a
+primary feature tensor whose shape to
+copy at the time of construction. Must
+not include the batch dimension.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">dtype</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>Either a TensorFlow datatype specifier
+or the name of a primary feature
+tensor whose datatype to copy at the
+time of construction.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">value</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">dtype</span></code></td>
+<td>no</td>
+<td>The constant value to populate the
+tensor with. Defaults to <code class="docutils literal notranslate"><span class="pre">0</span></code> or
+empty string.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Every model input must be satisfied by a primary or secondary feature, or an
+error will be raised.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Every <code class="docutils literal notranslate"><span class="pre">to_name</span></code> must be unique or an error will be raised.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Any <code class="docutils literal notranslate"><span class="pre">to_name</span></code> that is constructed and not used by the model will raise an error.</p>
+</div>
+</div>
+<div class="section" id="processing-steps">
+<span id="processors-ref"></span><h4><code class="docutils literal notranslate"><span class="pre">processing_steps</span></code><a class="headerlink" href="#processing-steps" title="Permalink to this headline">¶</a></h4>
+<p>Processing steps are performed after constructing both primary and secondary
+feature tensors. They are performed in exactly the order specified. The value of the
+<code class="docutils literal notranslate"><span class="pre">processing_steps</span></code> argument must be a list of JSON objects containing the
+following keys:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="22%" />
+<col width="16%" />
+<col width="15%" />
+<col width="47%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">tensor</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>Name of the primary or secondary
+feature tensor to operate on.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">type</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>The type of processesing step, as
+defined below.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">args</span></code></td>
+<td>dictionary</td>
+<td>no</td>
+<td>Arguments object for the specified
+<code class="docutils literal notranslate"><span class="pre">type</span></code>. Defaults to an empty object,
+but types may require certain
+arguments to be present.</td>
+</tr>
+</tbody>
+</table>
+<p>Processing steps may be any of the following types:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">slice</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name">Description:</th><td class="field-body">Extract a multidimensional slice from the tensor.</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Arguments:</th><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<table border="1" class="docutils">
+<colgroup>
+<col width="19%" />
+<col width="17%" />
+<col width="15%" />
+<col width="49%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">slice</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>The slice specifier as a Pythonic
+multidimensional array slice, with
+no batch dimension. Only integer
+indices, negative indices, and colons
+are allowed, e.g. <code class="docutils literal notranslate"><span class="pre">[3,:,4:,:-2,1:4]</span></code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">All tensors are input and output from each step using the names given at
+construction. Each processing step overwrites the tensor it operates on.</p>
+</div>
+</div>
+<div class="section" id="padding">
+<span id="paddings-ref"></span><h4><code class="docutils literal notranslate"><span class="pre">padding</span></code><a class="headerlink" href="#padding" title="Permalink to this headline">¶</a></h4>
+<p>Either all tensors in the pipeline are padded, or none are. For this reason, the value
+of the <code class="docutils literal notranslate"><span class="pre">padding</span></code> argument may be <code class="docutils literal notranslate"><span class="pre">true</span></code> to zero pad all tensors to the batch maximum
+along each dimension, or <code class="docutils literal notranslate"><span class="pre">false</span></code> to specify no padding. If more specific padding
+requirements are needed, the <code class="docutils literal notranslate"><span class="pre">padding</span></code> argument may be a list of JSON objects
+with the following keys:</p>
+<table border="1" class="docutils">
+<colgroup>
+<col width="19%" />
+<col width="17%" />
+<col width="16%" />
+<col width="48%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">tensor</span></code></td>
+<td>string</td>
+<td>yes</td>
+<td>Name of the feature tensor to pad.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">shape</span></code></td>
+<td>list</td>
+<td>no</td>
+<td>Shape specifier as a JSON array of
+integers. Set any dimension to <code class="docutils literal notranslate"><span class="pre">-1</span></code>
+to pad to the maximum batch size. Must
+not include the batch dimension.
+Defaults to maximum batch size for
+all dimensions.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">value</span></code></td>
+<td><code class="docutils literal notranslate"><span class="pre">dtype</span></code> of
+padded
+tensor</td>
+<td>no</td>
+<td>The constant value to pad the
+tensor with. Defaults to <code class="docutils literal notranslate"><span class="pre">0</span></code> or
+empty string.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">By either setting <code class="docutils literal notranslate"><span class="pre">padding</span></code> to <code class="docutils literal notranslate"><span class="pre">true</span></code> or by specifying at least
+one padding object, <strong>all</strong> tensors are automatically zero padded to the
+batch maximum along all dimensions unless a different desired padding
+specification is explicitly given. Either all tensors are padded, or none are.</p>
+</div>
+</div>
+</div>
+<div class="section" id="type-specific-arguments">
+<h3>Type-Specific Arguments<a class="headerlink" href="#type-specific-arguments" title="Permalink to this headline">¶</a></h3>
+<p>Each loader type has special arguments that define the behavior.</p>
+<table class="docutils field-list" frame="void" id="independent-loader-ref" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">independent</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Additional Arguments:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<table border="1" class="docutils">
+<colgroup>
+<col width="22%" />
+<col width="20%" />
+<col width="16%" />
+<col width="42%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">multi_load</span></code></td>
+<td>boolean</td>
+<td>no</td>
+<td>If <code class="docutils literal notranslate"><span class="pre">true</span></code>, records are
+loaded and parsed in batches.
+If <code class="docutils literal notranslate"><span class="pre">false</span></code>, each record is
+loaded and parsed individually
+and then batched later. Enabling
+may boost performance for some
+input pipelines, but is only
+available in very restricted
+cases. Must be <code class="docutils literal notranslate"><span class="pre">false</span></code> if the
+records are variable length or
+require any secondary features,
+processing steps, or padding.
+May not be available for all
+dataset types. Defaults to
+<code class="docutils literal notranslate"><span class="pre">false</span></code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<table class="docutils field-list" frame="void" id="continuous-loader-ref" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">continuous_sequence</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Additional Arguments:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<table border="1" class="docutils">
+<colgroup>
+<col width="20%" />
+<col width="18%" />
+<col width="15%" />
+<col width="47%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">min_window</span></code></td>
+<td>integer</td>
+<td>yes</td>
+<td>Minimum random size of the sliding
+window to select.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">max_window</span></code></td>
+<td>integer</td>
+<td>yes</td>
+<td>Maximum random size of the sliding
+window to select.</td>
+</tr>
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">stride</span></code></td>
+<td>integer or</td>
+<td>no</td>
+<td>Sliding window stride, or <code class="docutils literal notranslate"><span class="pre">null</span></code> for
+striding with the exact window length
+and no overlap. Defaults to <code class="docutils literal notranslate"><span class="pre">null</span></code>.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">All selected features must have the same length along the first dimension.</p>
+</div>
+<div class="line-block">
+<div class="line"><br /></div>
+</div>
+<table class="docutils field-list" frame="void" id="discrete-loader-ref" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Type:</th><td class="field-body"><code class="docutils literal notranslate"><span class="pre">discrete_sequence</span></code></td>
+</tr>
+<tr class="field-even field"><th class="field-name" colspan="2">Additional Arguments:</th></tr>
+<tr class="field-even field"><td>&#160;</td><td class="field-body"></td>
+</tr>
+</tbody>
+</table>
+<table border="1" class="docutils">
+<colgroup>
+<col width="20%" />
+<col width="18%" />
+<col width="15%" />
+<col width="47%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Key</th>
+<th class="head">Value Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">min_window</span></code></td>
+<td>integer</td>
+<td>yes</td>
+<td>Minimum random number of subsequences
+to include in a selected window.</td>
+</tr>
+<tr class="row-odd"><td><code class="docutils literal notranslate"><span class="pre">max_window</span></code></td>
+<td>integer</td>
+<td>yes</td>
+<td>Maximum random number of subsequences
+to include in a selected window.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Unlike with the <code class="docutils literal notranslate"><span class="pre">continuous_sequence</span></code> loader, selected features may
+have different lengths along their first dimension. They will still
+be aligned at subsequence boundaries.</p>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, 0xsx.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

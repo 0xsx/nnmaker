@@ -1,0 +1,37 @@
+// This is a test JSON file with fields that can be parsed, but containing some
+// entries that will fail type checking and some that will pass.
+
+{
+
+  "test1": "test",
+  "test2": "ꔋ𐌄𐒖𐌕",
+  "test3": 100,
+  "test4": 3.14,
+  "test5": [0, 1, 2],
+  "test6": [-0, -1, -2],
+  "test7": [0, "b", 2],
+  "test8": [],
+  "test9": [{"i": 0}, 1, 2],
+  "test10": [1.0, 1, 2],
+  "test11": ["a", "b", "c"],
+  "test12": false,
+  "test13": 3.0,
+  "test14": {"a": [0]},
+  "test15": null,
+  "test16": [false, true],
+  "test17": [0.5, 1.5, 2.5],
+  "test18": [{"i": 0}, {"j": 1}, {"k": 2}],
+  "test19": "false",  // Only allowed to be string.
+
+  "test20": [         // List of lists.
+    ["a"],
+    ["a", "b", "c"],
+    [
+      ["a", "b"],
+      ["c", "d"],
+      {"e": "f"}      // The inner list contains an object, but test20 is
+    ]                 // still a list of lists.
+  ]
+
+}
+

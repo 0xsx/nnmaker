@@ -1,0 +1,163 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>API Documentation &#8212; nnetmaker 0.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">nnetmaker</a></h1>
+
+
+
+<p class="blurb">A Python package for assisting neural network production with TensorFlow.</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="input.html">Input Pipeline</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-nnetmaker">
+<span id="api-documentation"></span><h1>API Documentation<a class="headerlink" href="#module-nnetmaker" title="Permalink to this headline">¶</a></h1>
+<p>A Python package for assisting neural network production with TensorFlow.</p>
+<div class="section" id="batch-loaders">
+<h2>Batch Loaders<a class="headerlink" href="#batch-loaders" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="value-json">
+<h3>Value JSON:<a class="headerlink" href="#value-json" title="Permalink to this headline">¶</a></h3>
+<table border="1" class="docutils">
+<colgroup>
+<col width="41%" />
+<col width="20%" />
+<col width="17%" />
+<col width="22%" />
+</colgroup>
+<thead valign="bottom">
+<tr class="row-odd"><th class="head">Name</th>
+<th class="head">Type</th>
+<th class="head">Required</th>
+<th class="head">Description</th>
+</tr>
+</thead>
+<tbody valign="top">
+<tr class="row-even"><td><code class="docutils literal notranslate"><span class="pre">dataset</span></code></td>
+<td>column 2</td>
+<td>column 3</td>
+<td>column 4</td>
+</tr>
+<tr class="row-odd"><td>body row 2</td>
+<td>…</td>
+<td>…</td>
+<td>&#160;</td>
+</tr>
+</tbody>
+</table>
+<dl class="class">
+<dt id="nnetmaker.IndependentBatchLoader">
+<em class="property">class </em><code class="descclassname">nnetmaker.</code><code class="descname">IndependentBatchLoader</code><span class="sig-paren">(</span><em>in_names</em>, <em>target_names</em>, <em>loader_args_dict</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#nnetmaker.IndependentBatchLoader" title="Permalink to this definition">¶</a></dt>
+<dd><p>A loader for iterating over batches of independent examples stored as
+TFRecord files in the specified data directory.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="nnetmaker.ContinuousSequenceBatchLoader">
+<em class="property">class </em><code class="descclassname">nnetmaker.</code><code class="descname">ContinuousSequenceBatchLoader</code><span class="sig-paren">(</span><em>in_names</em>, <em>target_names</em>, <em>loader_args_dict</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#nnetmaker.ContinuousSequenceBatchLoader" title="Permalink to this definition">¶</a></dt>
+<dd><p>A loader for iterating over batches of subsequences selected from large
+continuous sequences of data. Each <code class="docutils literal notranslate"><span class="pre">TFRecord</span></code> file stores a sequence of contiguous
+data chunks that together comprise a sequence containing no boundaries within.
+Each file is considered an independent source, and batch subsequences are selected by
+concatenating all chunks along the first dimension then selecting windows of the
+concatenated data. All features for each chunk must have the same length
+along the first dimension.</p>
+</dd></dl>
+
+<dl class="class">
+<dt id="nnetmaker.DiscreteSequenceBatchLoader">
+<em class="property">class </em><code class="descclassname">nnetmaker.</code><code class="descname">DiscreteSequenceBatchLoader</code><span class="sig-paren">(</span><em>in_names</em>, <em>target_names</em>, <em>loader_args_dict</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#nnetmaker.DiscreteSequenceBatchLoader" title="Permalink to this definition">¶</a></dt>
+<dd><p>A loader for iterating over batches of subsequences selected from large
+discrete sequences of data. Each TFRecord file stores a sequence of contiguous
+subsequences that each represent a single unit and together comprise a longer
+sequence. Each file is considered an independent source, and batch
+subsequences are selected by concatenating all unit subsequences along the
+first dimension then selecting a number of contiguous units, aligned at unit
+subsequence boundaries. Unit subsequence features may have different lengths
+along the first dimension.</p>
+</dd></dl>
+
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2018, 0xsx.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
