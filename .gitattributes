@@ -2,3 +2,5 @@
 *_crlf.json text eol=crlf
 *.png binary
 *.doctree binary
+*.pickle binary
+
